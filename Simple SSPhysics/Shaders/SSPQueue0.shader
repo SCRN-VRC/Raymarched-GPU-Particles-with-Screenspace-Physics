@@ -99,7 +99,7 @@ Shader "Simple SSPhysics/SSP Queue 0"
 			half4 frag (v2f i) : SV_Target
 			{
 				//if (isOrthographic()) discard;
-				if (IsInMirror()) discard;
+				//if (IsInMirror()) discard;
 				int _y = _Offset.y + i.uv.y * _Height;
 				half4 col = _SSPQueue4998.Load(int3(_Offset.x,_y,0));
 				col = _y >= int(_Offset.y + _Height - 2) ? _y == int(_Offset.y + _Height - 2) ?

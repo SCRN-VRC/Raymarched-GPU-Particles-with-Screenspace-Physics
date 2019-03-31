@@ -137,7 +137,7 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 			half4 frag (v2f i) : SV_Target
 			{
 				//if (isOrthographic()) discard;
-				if (IsInMirror()) discard;
+				//if (IsInMirror()) discard;
 				half4 col, col2;
 				half time = _Time.y;
 
@@ -366,7 +366,7 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 			half4 pixel_shader(custom_type ps ) : SV_Target
 			{
-				if (IsInMirror()) discard;
+				if (IsInMirror() || isOrthographic()) discard;
 				half3 pos = _WorldSpaceCameraPos;
 				half3 dir = normalize(ps.world_vertex - _WorldSpaceCameraPos);
 				half3 col = half3(0,0,0);
