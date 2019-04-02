@@ -25,7 +25,7 @@ Material:
     - _FresnelScale: 1.2
     - _Gravity: 0.0007
     - _Height: 50
-    - _MaxSize: 0.05
+    - _MaxSize: 0.04
     - _MinSize: 0.02
     - _Refraction: 4
     - _Reset: 0

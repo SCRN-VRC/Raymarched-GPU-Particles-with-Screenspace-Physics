@@ -1,4 +1,4 @@
-﻿// MIT License
+// MIT License
 
 // Copyright (c) 2019 SCRN
 
@@ -48,10 +48,12 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 		_Attract ("Attract", Range(0, 1)) = 0.0
 		[HideInInspector]_Test ("Test", Vector) = (0,0,0)
 	}
+
 	Subshader
 	{
 		Tags { "Queue"="Overlay+998" "ForceNoShadowCasting"="True" "IgnoreProjector"="True" }
 
+		// Do stuff with positions and velocities
 		Pass
 		{
 			Cull Off
@@ -72,8 +74,6 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 			Texture2D<half4> _SSPQueue0;
 			half4 _SSPQueue0_TexelSize;
-
-			//static const half2 ctr = 0.5 / _SSPQueue0_TexelSize.zw;
 
 			half3 _Test;
 			half _Spawn;
@@ -117,13 +117,11 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 				o.uv.xy = half4(v.vertex.x + 0.5, 
 					v.vertex.y + 0.5, 0.0, 0.0);
 
-				o.uv.z = (45.0 / unity_DeltaTime.w);
+				// Everything goes really fast in mirrors?
+				o.uv.z = (45.0 / unity_DeltaTime.w) * IsInMirror() ? 0.5 : 1.0;
 
 				o.iniPos = _SSPQueue0.Load(int3(_Offset.x,_Offset.y + _Height, 0));
 				o.iniVel = _SSPQueue0.Load(int3(_Offset.x,_Offset.y + _Height + 1, 0)) * _Speed;
-
-				// o.iniPos = tex2Dlod(_SSPQueue0, half4(ctr.x, ctr.y + _Height / _SSPQueue0_TexelSize.w, 0, 0));
-				// o.iniVel = tex2Dlod(_SSPQueue0, half4(ctr.x, ctr.y + (_Height + 1) / _SSPQueue0_TexelSize.w, 0, 0)) * _Speed;
 
 				half4 worldPos = mul(unity_ObjectToWorld, v.vertex);
 				o.ray = worldPos.xyz - _WorldSpaceCameraPos;
@@ -136,10 +134,7 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 			half4 frag (v2f i) : SV_Target
 			{
-				//if (isOrthographic()) discard;
-				//if (IsInMirror()) discard;
 				half4 col, col2;
-				half time = _Time.y;
 
 				int _y = _Offset.y + i.uv.y * _Height;
 				half ratio = i.uv.z;
@@ -149,9 +144,6 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 					col = _SSPQueue0.Load(int3(_Offset.x,_y,0));
 					col2 = _SSPQueue0.Load(int3(_Offset.x,_y+25,0));
-
-					// col = tex2D(_SSPQueue0, half2(ctr.x, ctr.y + _y / _SSPQueue0_TexelSize.w));
-					// col2 = tex2D(_SSPQueue0, half2(ctr.x, ctr.y + (_y + 25) / _SSPQueue0_TexelSize.w));
 
 					half3 pos = col.xyz;
 					half init = col.w;
@@ -165,7 +157,7 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 					init = (_Reset > 0.5) ? 0 : init;
 
-					//init = (time % 6.0 > 5.5) ? 0 : init;
+					//init = (_Time.y % 6.0 > 5.5) ? 0 : init;
 
 					pos = pos + vel * ratio;
 
@@ -175,9 +167,6 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 					col = _SSPQueue0.Load(int3(_Offset.x,_y-25,0));
 					col2 = _SSPQueue0.Load(int3(_Offset.x,_y,0));
-
-					// col = tex2D(_SSPQueue0, half2(ctr.x, ctr.y + (_y - 25) / _SSPQueue0_TexelSize.w));
-					// col2 = tex2D(_SSPQueue0, half2(ctr.x, ctr.y + _y / _SSPQueue0_TexelSize.w));
 
 					half3 pos = col.xyz;
 					half init = col.w;
@@ -209,10 +198,10 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 						half3 worldNormal = normalize(cross(-ddx(worldPosition), ddy(worldPosition)));
 
 						vel = (particleDepth > depthValue) ? reflect(vel, worldNormal) * (_Bounce * ratio) :
-							vel - half3(0, _Gravity, 0) * ratio;
+							vel - half3(0, _Gravity * ratio, 0);
 
 						// vel = (particleDepth > depthValue) ? vel - (dot(vel, worldNormal) * worldNormal * (1.0 + _Bounce)) * ratio :
-						// 	vel - half3(0, _Gravity, 0) * ratio;
+						// 	vel - half3(0, _Gravity * ratio, 0);
 					}
 					return half4(vel, 0);
 				}
@@ -222,6 +211,70 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 		
 		GrabPass{ "_SSPQueue4998" }
 
+		// Hide the data from the screen after it's stored in the grab pass
+		Pass
+		{
+			Cull Off
+			ZTest Always
+			Lighting Off
+			SeparateSpecular Off
+			Fog { Mode Off }
+
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+			#pragma target 5.0
+			#pragma fragmentoption ARB_precision_hint_fastest
+
+			#include "SSPInclude.cginc"
+
+			Texture2D<half4> _SSPQueue4998;
+
+			half _Width;
+			half _Height;
+
+			struct appdata
+			{
+				half4 vertex : POSITION;
+				half2 uv : TEXCOORD0;
+			};
+
+			struct v2f
+			{
+				half4 vertex : SV_POSITION;
+				half2 uv : TEXCOORD0;
+			};
+
+			v2f vert (appdata v)
+			{
+				v2f o;
+
+                // +2 for the initial pos and vel from queue 0
+				_Height += 2;
+				half2 rasterPosition = half2(
+					_Offset.x + _Width * (v.vertex.x + 0.5),
+					_Offset.y + _Height * (v.vertex.y + 0.5));
+				o.vertex = half4(
+					2.0 * rasterPosition.x / _ScreenParams.x - 1.0,
+					_ProjectionParams.x * (2.0 * rasterPosition.y / _ScreenParams.y - 1.0),
+					_ProjectionParams.y,
+					1.0);
+
+				o.uv = half4(v.vertex.x + 0.5, 
+					v.vertex.y + 0.5, 0.0, 0.0);
+
+				return o;
+			}
+			
+			half4 frag (v2f i) : SV_Target
+			{
+				int _y = _Offset.y + i.uv.y * _Height;
+				return _SSPQueue4998.Load(int3(_Offset.x + 1,_y,0));
+			}
+			ENDCG
+		}
+
+		// Ray marching here!
 		Pass
 		{
 			Cull Front
@@ -244,7 +297,6 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 			UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
 			half3 _Test;
-			half3 _Position;
 			half3 _Color;
 			half _MinSize;
 			half _MaxSize;
@@ -257,8 +309,6 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 
 			Texture2D<half4> _SSPQueue4998;
 			half4 _SSPQueue4998_TexelSize;
-
-			//static const half2 ctr = 0.5 / _SSPQueue4998_TexelSize.zw;
 
 			half4 posA[25];
 			//half4 velA[25];
@@ -284,7 +334,6 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 				half d = 1e9;
 				[unroll]
 				for (int i = 0; i < 25; i++) {
-					//if (posA[i].a < 1.0) continue;
 					d = fsmin(d, sphere(pos - posA[i], posA[i].a), _Smoothing);
 				}
 				return d;
@@ -294,13 +343,13 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 			{
 				half td = 0, d = 0.0;
 				[loop]
-				for (int i = 0; i < 32; ++i)
+				for (int i = 0; i < 64; ++i)
 				{
 					pos += dir * d;
 					d = dist(pos);
 					td += d;
 					td = td > zDepth ? FAR : td;
-					if (d < 0.002*td  || td >= FAR ) break;
+					if (d < 0.0075*td  || td >= FAR ) break;
 				}
 
 				return td;
@@ -364,7 +413,7 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 				return vs;
 			}
 
-			half4 pixel_shader(custom_type ps ) : SV_Target
+			half4 pixel_shader(custom_type ps) : SV_Target
 			{
 				if (IsInMirror() || isOrthographic()) discard;
 				half3 pos = _WorldSpaceCameraPos;
@@ -378,15 +427,16 @@ Shader "Simple SSPhysics/SSP Queue 4998"
 				[unroll]
 				for (int x = 0; x < 25; x++) {
 					posA[x].rgb = _SSPQueue4998.Load(int3(_Offset.x,_Offset.y + x, 0)).rgb;
-					// posA[x].rgb = tex2D(_SSPQueue4998, half2(ctr.x, ctr.y + x / _SSPQueue4998_TexelSize.w));
 					posA[x].a = hash(x) * _MaxSize + _MinSize;
+					// Maybe do something with velocity?
+					//velA[x].rgb = _SSPQueue4998.Load(int3(_Offset.x,_Offset.y + x + 25, 0)).rgb;
 				}
 
 				half dist = march(pos, dir, zDepth);
 				if (dist < FAR) {
 
 					half3 inters = pos + dist * dir;
-					col = col + illuminate(inters, dir, ps.GrabAssTextureUV);
+					col = illuminate(inters, dir, ps.GrabAssTextureUV);
 
 				}
 				else discard;
