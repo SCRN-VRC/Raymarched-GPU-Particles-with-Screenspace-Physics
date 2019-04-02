@@ -7,10 +7,9 @@ By SCRN
 Particle positions and velocities are stored on the bottom left of the player screen with two grabpasses then fed into a ray marcher.
 
 # Stuff that Breaks It
-1. Mirrors
-2. Portals
+1. Mirrors (Kinda Fixed?)
+2. Portals (Fixed?)
 3. Other grabpasses
-4. Stencils
 
 # How to Add to Avatars
 1. Look in the Prefabs folder
