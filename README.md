@@ -26,3 +26,5 @@ If you don't know how to make gesture overrides look up VRC Gesture overrides on
 I recommend using https://github.com/Xiexe/VRCInventorySystem to keep the objects disabled and free up a gesture override for spawning.
 
 Thanks to Merlin, error.mdl, Lyuma, Neitri, Nave, 1001 for making this possible.
+
+Contact me on Discord if you have any questions or suggestions: **SCRN#8008**
